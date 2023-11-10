@@ -22,3 +22,23 @@ case
 when age = (select max(age) from bigquery-public-data.thelook_ecommerce.users) then 'oldest'
 end as tag
  from bigquery-public-data.thelook_ecommerce.users;
+--4
+SELECT 
+EXTRACT(YEAR FROM t.created_at) || '-' || EXTRACT(MONTH FROM t.created_at) as month_year,
+s.id as id,
+s.name as name,
+s.cost as cost,
+s.retail_price as price,
+s.retail_price - s.cost as profit,
+dense_rank() over(partition by s.id order by s.retail_price - s.cost desc)
+ FROM bigquery-public-data.thelook_ecommerce.products s
+join bigquery-public-data.thelook_ecommerce.order_items t on s.id = t.product_id
+group by 1,s.id,s.name,s.cost,s.retail_price
+--5
+SELECT 
+EXTRACT(YEAR FROM t.created_at) || '-' || EXTRACT(MONTH FROM t.created_at) as month_year,
+s.category,
+sum(t.sale_price)
+FROM bigquery-public-data.thelook_ecommerce.products s
+join bigquery-public-data.thelook_ecommerce.order_items t on s.id = t.product_id
+group by 1,2
