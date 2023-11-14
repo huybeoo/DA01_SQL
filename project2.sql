@@ -11,6 +11,8 @@ from bigquery-public-data.thelook_ecommerce.order_items
 where created_at between '2019-01-01' and '2022-04-01'
 group by created_at,user_id;
 --3
+with cte as
+(
 select first_name,last_name,gender,age,
 case
 when age = (select min(age) from bigquery-public-data.thelook_ecommerce.users) then 'youngest'
@@ -21,19 +23,26 @@ select first_name,last_name,gender,age,
 case
 when age = (select max(age) from bigquery-public-data.thelook_ecommerce.users) then 'oldest'
 end as tag
- from bigquery-public-data.thelook_ecommerce.users;
+from bigquery-public-data.thelook_ecommerce.users)
+
+select gender,age,tag, count(*)
+from cte
+group by gender, age, tag
+ 
 --4
 SELECT 
 EXTRACT(YEAR FROM t.created_at) || '-' || EXTRACT(MONTH FROM t.created_at) as month_year,
 s.id as id,
 s.name as name,
-s.cost as cost,
-s.retail_price as price,
-s.retail_price - s.cost as profit,
+sum(s.cost) as cost,
+sum(s.retail_price) as price,
+sum(s.retail_price) - sum(s.cost) as profit,
 dense_rank() over(partition by s.id order by s.retail_price - s.cost desc)
- FROM bigquery-public-data.thelook_ecommerce.products s
+FROM bigquery-public-data.thelook_ecommerce.products s
 join bigquery-public-data.thelook_ecommerce.order_items t on s.id = t.product_id
+where DATE(t.created_at) BETWEEN '2019-01-01' AND '2022-04-30'
 group by 1,s.id,s.name,s.cost,s.retail_price
+ 
 --5
 SELECT 
 EXTRACT(YEAR FROM t.created_at) || '-' || EXTRACT(MONTH FROM t.created_at) as month_year,
@@ -43,20 +52,23 @@ FROM bigquery-public-data.thelook_ecommerce.products s
 join bigquery-public-data.thelook_ecommerce.order_items t on s.id = t.product_id
 group by 1,2
 
-
-select EXTRACT(YEAR FROM ord.created_at) || '-' || EXTRACT(MONTH FROM ord.created_at)|| '-' || '01' as year,
-extract (month from ord.created_at) as month,
-sum(ordi.sale_price) as tpv,
+-- lấy output
+select FORMAT_DATE('%Y-%m', DATE (ordi.created_at))||'-'|| '01' as month,
+extract (year from ord.created_at) as year,
+pd.category as product_category,
+cast(sum(ordi.sale_price) as int) as tpv,
 count(ordi.order_id) as tpo,
 round(100 * (sum(ordi.sale_price) - lag(sum(ordi.sale_price)) over(partition by 1,2 order by 1,2 ))/lag(sum(ordi.sale_price)) over(partition by 1,2 order by 1,2 ),2)||'%' as Revenue_growth,
 round(100 * (count(ordi.order_id) -lag(count(ordi.order_id)) over(partition by 1,2 order by 1,2))/lag(count(ordi.order_id)) over(partition by 1,2 order by 1,2),2)||'%' as Order_growth,
-sum(pd.cost) as total_cost,
-sum(ordi.sale_price) - sum(pd.cost) as total_profit,
-sum(ordi.sale_price) / sum(pd.cost) as Profit_to_cost_ratio
+cast(sum(pd.cost) as int) as total_cost,
+cast(sum(ordi.sale_price) - sum(pd.cost)as int) as total_profit,
+round(sum(ordi.sale_price) / sum(pd.cost),3) as Profit_to_cost_ratio
 from bigquery-public-data.thelook_ecommerce.orders ord
 join bigquery-public-data.thelook_ecommerce.order_items ordi
 on ord.order_id = ordi.order_id
 join bigquery-public-data.thelook_ecommerce.products pd
 on ordi.product_id = pd.id
-group by 1,2
+group by 1,2,3
+order by 1 desc
+
 
