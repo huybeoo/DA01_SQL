@@ -1,5 +1,5 @@
-select FORMAT_DATE('%Y-%m', DATE (ordi.created_at))||'-'|| '01' as month,
-extract (year from ord.created_at) as year,
+select FORMAT_DATE('%Y-%m', DATE (ordi.created_at)) as month,
+extract (month from ord.created_at) as year,
 pd.category as product_category,
 cast(sum(ordi.sale_price) as int) as tpv,
 count(ordi.order_id) as tpo,
