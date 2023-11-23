@@ -51,3 +51,32 @@ rank()over(partition by year_id order by total desc )from cte)
 
 select * from rank1 
 where rank = 1
+--5
+select * from customer
+select * from sales
+select * from segment_score
+
+with rfm as (
+select cs.customer_id as id,
+current_date - max(sl.order_date) as r,
+count(order_id) as f,
+sum(sales) as m
+from customer cs
+join sales sl on cs.customer_id = sl.customer_id
+group by 1),
+rfmscore as(
+select id,
+ntile(5) over(order by r desc) as rscore,
+ntile(5) over(order by f ) as fscore,
+ntile(5) over(order by m ) as mscore
+from rfm),
+rfm_final as(
+select id,cast(rscore as varchar)||cast(fscore as varchar)||cast(mscore as varchar) as rfm
+from rfmscore 
+)
+
+select id,ss.segment from rfm_final rf
+join segment_score ss on ss.scores = rf.rfm
+where ss.segment = 'Champions'
+
+
